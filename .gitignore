@@ -1,0 +1,51 @@
+# Output directories and generated files
+output/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+monthly_income_expense_chart.png
+
+# Client data
+client_data/
+
+# Test data
+test_data/
+*.csv
+*.xlsx
+*.xls
+
+# Python environment and cache
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ipynb_checkpoints/
+
+# IDE-specific files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+
+# Environment variables
+.env
