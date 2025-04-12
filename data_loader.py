@@ -304,43 +304,89 @@ class FinancialDataManager:
         return most_common if delimiters[most_common] > 0 else None
     
     def save_data(self, directory="client_data"):
-        """Save all client data to JSON files."""
-        try:
-            print(f"Attempting to save data for {len(self.clients)} clients to {directory}")
-            
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-                print(f"Created directory: {directory}")
-            
-            # Ensure the directory exists
-            if not os.path.isdir(directory):
-                print(f"Warning: {directory} exists but is not a directory. Creating a new directory.")
-                os.makedirs(directory, exist_ok=True)
+        """Save client data to JSON files."""
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Created {directory} directory")
+        
+        # Add JSON serialization for pandas objects
+        class PandasJSONEncoder(json.JSONEncoder):
+            def default(self, obj):
+                import pandas as pd
+                import numpy as np
                 
-            for client_id, client_data in self.clients.items():
-                datasets = client_data.get('datasets', {})
-                print(f"Processing client {client_id} with {len(datasets)} datasets")
+                # Handle pandas Series
+                if isinstance(obj, pd.Series):
+                    return obj.tolist()
                 
-                # Print a sample of the data for debugging
-                for dataset_name, dataset in datasets.items():
+                # Handle pandas Timestamp
+                if isinstance(obj, pd.Timestamp):
+                    return obj.isoformat()
+                    
+                # Handle numpy arrays
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                    
+                # Handle numpy numeric types
+                if isinstance(obj, (np.int64, np.int32, np.int16, np.int8)):
+                    return int(obj)
+                if isinstance(obj, (np.float64, np.float32, np.float16)):
+                    return float(obj)
+                    
+                # Let the base class handle other types or raise TypeError
+                return super().default(obj)
+        
+        print(f"Attempting to save data for {len(self.clients)} clients to {directory}")
+        
+        for client, client_data in self.clients.items():
+            try:
+                print(f"Processing client {client} with {len(client_data.get('datasets', {}))} datasets")
+                
+                # Analyze each dataset
+                for dataset_name, dataset in client_data.get('datasets', {}).items():
                     if 'months' in dataset:
-                        print(f"  Dataset {dataset_name} contains {len(dataset['months'])} months of data")
-                        if dataset.get('months') and len(dataset['months']) > 0:
-                            print(f"    First month: {dataset['months'][0]}")
-                            print(f"    First income value: {dataset['income_values'][0] if 'income_values' in dataset and dataset['income_values'] else 'N/A'}")
-                            print(f"    Expense categories: {list(dataset.get('expense_data', {}).keys())}")
+                        # This is a stacked bar chart dataset
+                        months = dataset.get('months', [])
+                        print(f"  Dataset {dataset_name} contains {len(months)} months of data")
+                        if months:
+                            print(f"    First month: {months[0]}")
+                            income_values = dataset.get('income_values', [])
+                            if income_values:
+                                print(f"    First income value: {income_values[0]}")
+                            expense_data = dataset.get('expense_data', {})
+                            print(f"    Expense categories: {list(expense_data.keys())}")
+                    elif 'dates' in dataset:
+                        # This is a daily cash balance dataset
+                        dates = dataset.get('dates', [])
+                        print(f"  Dataset {dataset_name} contains {len(dates)} days of data")
+                        if len(dates) > 0:
+                            print(f"    First date: {dates[0]}")
+                            accounts = dataset.get('accounts', [])
+                            print(f"    Accounts: {list(accounts)}")
                 
-                file_path = os.path.join(directory, f"{client_id}.json")
+                # Save the client data
+                file_path = os.path.join(directory, f"{client}.json")
                 with open(file_path, 'w') as f:
-                    json.dump(client_data, f, indent=4)
-                print(f"Data saved for client {client_id} to {file_path}")
-            
-            return True
-        except Exception as e:
-            import traceback
-            print(f"Error saving data: {e}")
-            traceback.print_exc()
-            return False
+                    json.dump(client_data, f, indent=4, cls=PandasJSONEncoder)
+                print(f"Data saved for client {client} to {file_path}")
+            except Exception as e:
+                print(f"Error saving data: {e}")
+                # Print the full stack trace for debugging
+                import traceback
+                traceback.print_exc()
+                
+                # Try to save just the basic client info
+                try:
+                    basic_client_data = {
+                        "name": client_data.get("name", client),
+                        "datasets": {}
+                    }
+                    file_path = os.path.join(directory, f"{client}.json")
+                    with open(file_path, 'w') as f:
+                        json.dump(basic_client_data, f, indent=4)
+                    print(f"Saved basic client data for {client}")
+                except Exception as basic_error:
+                    print(f"Could not even save basic client data: {basic_error}")
     
     def load_saved_data(self, client_id, directory="client_data"):
         """Load client data from a saved JSON file."""
@@ -365,6 +411,113 @@ class FinancialDataManager:
             return None
             
         return self.clients[client]['datasets'][dataset_name]
+    
+    def load_daily_cash_balance_data(self, data_source, dataset_name="daily_cash_balance", 
+                                     date_col="Date", account_col="Account", balance_col="Balance"):
+        """
+        Load daily cash balance data from a file or clipboard text.
+        
+        Parameters:
+        - data_source: Either a file path (str) or DataFrame with columns [Date, Account, Balance]
+        - dataset_name: Name to give the dataset
+        - date_col: Name of the date column (default: "Date")
+        - account_col: Name of the account column (default: "Account")
+        - balance_col: Name of the balance column (default: "Balance")
+        
+        Expected data format (as CSV):
+        Date,Account,Balance
+        2023-01-01,Checking,5000.00
+        2023-01-01,Savings,10000.00
+        ...
+        
+        Returns:
+        - The processed dataset
+        """
+        if self.current_client is None:
+            raise ValueError("No client selected. Add a client first.")
+            
+        # Load the data based on the source type
+        if isinstance(data_source, str):
+            # Check if it's a file path or clipboard text
+            if os.path.exists(data_source):
+                # It's a file path
+                if data_source.lower().endswith('.csv'):
+                    df = pd.read_csv(data_source)
+                elif data_source.lower().endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(data_source)
+                else:
+                    raise ValueError("Unsupported file type. Only CSV and Excel files are supported.")
+            else:
+                # Assume it's clipboard text
+                try:
+                    df = pd.read_csv(io.StringIO(data_source), sep='\t')
+                except:
+                    # Try with comma separator
+                    df = pd.read_csv(io.StringIO(data_source), sep=',')
+        elif isinstance(data_source, pd.DataFrame):
+            # It's already a DataFrame
+            df = data_source
+        else:
+            raise ValueError("data_source must be a file path, clipboard text, or DataFrame")
+            
+        # Standardize column names
+        if date_col != "Date" and date_col in df.columns:
+            df = df.rename(columns={date_col: "Date"})
+        if account_col != "Account" and account_col in df.columns:
+            df = df.rename(columns={account_col: "Account"})
+        if balance_col != "Balance" and balance_col in df.columns:
+            df = df.rename(columns={balance_col: "Balance"})
+            
+        # Validate required columns
+        required_cols = ["Date", "Account", "Balance"]
+        for col in required_cols:
+            if col not in df.columns:
+                raise ValueError(f"Data must contain '{col}' column")
+        
+        # Convert dates to datetime
+        df["Date"] = pd.to_datetime(df["Date"])
+        
+        # Ensure Balance is numeric
+        df["Balance"] = pd.to_numeric(df["Balance"], errors='coerce')
+        
+        # Sort by date
+        df = df.sort_values("Date")
+        
+        # Store the raw data
+        if 'raw_data' not in self.clients[self.current_client]:
+            self.clients[self.current_client]['raw_data'] = {}
+        
+        self.clients[self.current_client]['raw_data'][dataset_name] = df.to_dict(orient='records')
+        
+        # Process the data for visualization
+        # Get unique dates and accounts
+        dates = df["Date"].unique()
+        accounts = df["Account"].unique()
+        
+        # Create a pivot table: dates as index, accounts as columns
+        pivot_data = df.pivot_table(
+            index='Date', 
+            columns='Account', 
+            values='Balance',
+            aggfunc='sum'  # In case there are multiple entries for the same account on the same day
+        ).reset_index()
+        
+        # Calculate total balance across all accounts for each date
+        pivot_data['Total'] = pivot_data.iloc[:, 1:].sum(axis=1)
+        
+        # Create the dataset for the chart
+        dataset = {
+            'dates': pivot_data['Date'],
+            'accounts': accounts,
+            'account_data': {account: pivot_data[account].values for account in accounts},
+            'total_balance': pivot_data['Total'].values,
+            'client_name': self.clients[self.current_client]['name']
+        }
+        
+        # Store the processed dataset
+        self.clients[self.current_client]['datasets'][dataset_name] = dataset
+        
+        return dataset
 
 # Example of how to use this class with your existing data
 def load_example_data():

@@ -14,6 +14,9 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 - Type row support to accurately identify Income, Expense, and Net Income columns
 - CSV file import option for structured data
 - Automatic net income calculation when not provided in the data
+- Daily cash balance visualization with multiple account lines
+- Upper (green) and lower (red) threshold lines with custom labels
+- Data editor for fixing date and value errors
 
 ---
 
@@ -55,24 +58,44 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 - ✅ Fix NET INCOME display as line graph, not stacked bar
 - ✅ Automatic NET INCOME calculation
 
-### Phase 1.5: Daily Cash Balance Chart (Current Priority)
-- [ ] Create daily cash balance line chart module
-  - [ ] Set up DailyCashBalanceChart class extending BaseChart
-  - [ ] Implement multi-line visualization for multiple accounts
-  - [ ] Add total balance calculation and display
-  - [ ] Implement date axis formatting
-  - [ ] Add support for future projections (dotted line)
-  - [ ] Add threshold line functionality
-- [ ] Add data processing for daily cash balances
-  - [ ] Create CSV import function for daily cash data
-  - [ ] Implement date parsing and handling
-  - [ ] Set up account-based data transformation
-- [ ] Create basic UI for cash balance charts
-  - [ ] Build file upload interface
-  - [ ] Add chart configuration options
-  - [ ] Implement chart rendering and saving
+### Phase 1.5: Daily Cash Balance Chart (Complete) ✅
+- ✅ Create daily cash balance line chart module
+  - ✅ Set up DailyCashBalanceChart class extending BaseChart
+  - ✅ Implement multi-line visualization for multiple accounts
+  - ✅ Add total balance calculation and display
+  - ✅ Implement date axis formatting
+  - ✅ Add support for future projections with dotted lines
+  - ✅ Add threshold line functionality with customizable labels
+- ✅ Add data processing for daily cash balances
+  - ✅ Create CSV import function for daily cash data
+  - ✅ Implement date parsing and handling
+  - ✅ Set up account-based data transformation
+  - ✅ Support for negative balance values
+- ✅ Create enhanced UI for cash balance charts
+  - ✅ Build file upload interface and clipboard input
+  - ✅ Add chart configuration options with threshold controls
+  - ✅ Implement chart rendering and saving
+  - ✅ Add data editor for fixing dates and values
 
-Estimated time: 3-5 hours
+### Phase 1.6: Cash Flow Area Chart (Current Priority)
+- [ ] Create cash flow area chart module
+  - [ ] Set up CashFlowAreaChart class extending BaseChart
+  - [ ] Implement flowing area visualization for cash movements
+  - [ ] Support for multiple transactions in the same day
+  - [ ] Handle running balance calculations
+  - [ ] Add shaded areas for positive and negative flow regions
+- [ ] Add data processing for cash flow data
+  - [ ] Create data loader for transactions-based format
+  - [ ] Implement date grouping and sorting
+  - [ ] Support running balance verification
+  - [ ] Add transaction categorization
+- [ ] Create UI for cash flow area charts
+  - [ ] Build specialized upload interface
+  - [ ] Add filtering capabilities by category
+  - [ ] Implement zooming to specific date ranges
+  - [ ] Support transaction annotations
+
+Estimated time: 5-7 hours
 
 ### Phase 2: UI Enhancements (Next)
 - ✅ Create a simple GUI interface with Tkinter
@@ -120,10 +143,13 @@ Here are some magical seeds we can plant later 🌱:
 - Some versions of Cursor might not auto-detect `.venv` until you select it manually (use `Python: Select Interpreter`)
 - If you add too many expense categories, labels on bars may overlap 🤹
 - ~~Net Income showing as an expense category in stacked bars instead of as a line~~ Fixed! ✅
+- There's an error when adding a lower threshold and clicking "Process & Generate Chart" in some scenarios - investigating this issue
+- Sometimes data with year-end transitions (Dec-Jan) may show anomalies in date formatting
+- JSON serialization can fail with certain pandas objects (added workaround with custom encoder)
 
 ---
 
-## 🤗 Final Thought
+## 🔮 Final Thought
 This isn't just code. It's a **practice in clarity, intention, and joy**. 
 Thanks for being part of this — future-you is gonna love you for keeping it tidy ✨💜
 

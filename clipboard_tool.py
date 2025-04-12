@@ -6,6 +6,7 @@ from tkinter import messagebox, filedialog
 import matplotlib.pyplot as plt
 from data_loader import FinancialDataManager
 from charts.stacked_bar import StackedBarIncomeChart
+from charts.daily_cash_line import DailyCashBalanceChart
 import re
 import csv
 import os
@@ -39,6 +40,22 @@ class ClipboardToolApp:
         
         # Migrate any legacy data
         self.migrate_legacy_data()
+        
+        # Initialize chart type
+        self.chart_type = tk.StringVar(value="stacked_bar")
+        
+        # Initialize threshold values
+        self.use_lower_threshold = tk.BooleanVar(value=False)
+        self.lower_threshold_value = tk.StringVar(value="0")
+        self.lower_threshold_name = tk.StringVar(value="Minimum Balance")
+        
+        self.use_upper_threshold = tk.BooleanVar(value=False)
+        self.upper_threshold_value = tk.StringVar(value="0")
+        self.upper_threshold_name = tk.StringVar(value="Target Balance")
+        
+        # Track the current dataset for editing
+        self.current_dataset = None
+        self.current_df = None
         
         # Create widgets
         self.create_widgets()
@@ -136,6 +153,69 @@ First column = months, second = income, rest = expense categories"""
         self.dataset_entry.pack(side=tk.LEFT, padx=5)
         self.dataset_entry.insert(0, "clipboard_data")
         
+        # Chart type selection
+        chart_type_frame = tk.Frame(self.root)
+        chart_type_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(chart_type_frame, text="Chart Type:").pack(side=tk.LEFT)
+        
+        stacked_bar_radio = tk.Radiobutton(chart_type_frame, text="Income/Expense Bar Chart", 
+                                          variable=self.chart_type, value="stacked_bar",
+                                          command=self.update_ui)
+        stacked_bar_radio.pack(side=tk.LEFT, padx=5)
+        
+        cash_balance_radio = tk.Radiobutton(chart_type_frame, text="Daily Cash Balance Line Chart", 
+                                           variable=self.chart_type, value="daily_cash",
+                                           command=self.update_ui)
+        cash_balance_radio.pack(side=tk.LEFT, padx=5)
+        
+        # Threshold options frame (will be shown/hidden based on chart type)
+        self.threshold_frame = tk.LabelFrame(self.root, text="Threshold Lines", padx=10, pady=5)
+        
+        # Lower threshold (red line)
+        lower_threshold_frame = tk.Frame(self.threshold_frame)
+        lower_threshold_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        self.lower_threshold_check = tk.Checkbutton(lower_threshold_frame, text="Lower Threshold (Red)",
+                                                   variable=self.use_lower_threshold)
+        self.lower_threshold_check.pack(side=tk.LEFT)
+        
+        tk.Label(lower_threshold_frame, text="Value:").pack(side=tk.LEFT, padx=(10, 2))
+        lower_threshold_entry = tk.Entry(lower_threshold_frame, width=10, 
+                                        textvariable=self.lower_threshold_value)
+        lower_threshold_entry.pack(side=tk.LEFT, padx=2)
+        
+        tk.Label(lower_threshold_frame, text="Label:").pack(side=tk.LEFT, padx=(10, 2))
+        lower_threshold_name_entry = tk.Entry(lower_threshold_frame, width=15, 
+                                             textvariable=self.lower_threshold_name)
+        lower_threshold_name_entry.pack(side=tk.LEFT, padx=2)
+        
+        # Upper threshold (green line)
+        upper_threshold_frame = tk.Frame(self.threshold_frame)
+        upper_threshold_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        self.upper_threshold_check = tk.Checkbutton(upper_threshold_frame, text="Upper Threshold (Green)",
+                                                   variable=self.use_upper_threshold)
+        self.upper_threshold_check.pack(side=tk.LEFT)
+        
+        tk.Label(upper_threshold_frame, text="Value:").pack(side=tk.LEFT, padx=(10, 2))
+        upper_threshold_entry = tk.Entry(upper_threshold_frame, width=10, 
+                                        textvariable=self.upper_threshold_value)
+        upper_threshold_entry.pack(side=tk.LEFT, padx=2)
+        
+        tk.Label(upper_threshold_frame, text="Label:").pack(side=tk.LEFT, padx=(10, 2))
+        upper_threshold_name_entry = tk.Entry(upper_threshold_frame, width=15, 
+                                             textvariable=self.upper_threshold_name)
+        upper_threshold_name_entry.pack(side=tk.LEFT, padx=2)
+        
+        # Instructions label with default stacked bar instructions
+        self.instructions_text = tk.StringVar()
+        self.update_instructions()  # Set initial instructions
+        
+        self.instruction_label = tk.Label(self.root, textvariable=self.instructions_text, 
+                                        justify=tk.LEFT, padx=10, pady=10)
+        self.instruction_label.pack(fill=tk.X)
+        
         # Buttons frame
         button_frame = tk.Frame(self.root)
         button_frame.pack(pady=10)
@@ -156,12 +236,58 @@ First column = months, second = income, rest = expense categories"""
         self.upload_btn = tk.Button(button_frame, text="Upload CSV", command=self.upload_csv)
         self.upload_btn.pack(side=tk.LEFT, padx=5)
         
+        # Add Edit Data button
+        self.edit_data_btn = tk.Button(button_frame, text="Edit Data", 
+                                     command=self.open_data_editor,
+                                     state=tk.DISABLED)  # Initially disabled
+        self.edit_data_btn.pack(side=tk.LEFT, padx=5)
+        
         # Add Save Data button
         self.save_btn = tk.Button(button_frame, text="Save Data", 
                                  command=self.save_current_data,
                                  bg="#e6ffe6",  # Light green background
                                  font=("Arial", 10, "bold"))
         self.save_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Initial UI update
+        self.update_ui()
+    
+    def update_ui(self):
+        """Update UI elements based on selected chart type."""
+        chart_type = self.chart_type.get()
+        
+        # Show/hide threshold options based on chart type
+        if chart_type == "daily_cash":
+            self.threshold_frame.pack(fill=tk.X, padx=10, pady=5, after=self.instruction_label)
+        else:
+            self.threshold_frame.pack_forget()
+        
+        # Update instructions
+        self.update_instructions()
+    
+    def update_instructions(self):
+        """Update the instructions based on the selected chart type."""
+        if self.chart_type.get() == "stacked_bar":
+            instructions = """Copy data from Excel/Google Sheets and paste below.
+            
+Format should be:
+Month    Income    Expense1    Expense2    ...
+Jan'24   1000      200         300         ...
+Feb'24   1100      250         320         ...
+            
+First column = months, second = income, rest = expense categories"""
+        else:  # daily_cash
+            instructions = """Copy data from Excel/Google Sheets and paste below.
+            
+Format should be:
+Date,Account,Balance
+2023-01-01,Checking,5000.00
+2023-01-01,Savings,15000.00
+2023-01-02,Checking,5250.75
+            
+CSV format with headers: Date, Account, Balance"""
+        
+        self.instructions_text.set(instructions)
     
     def process_data(self):
         """Process the clipboard data and generate a chart."""
@@ -189,47 +315,102 @@ First column = months, second = income, rest = expense categories"""
         # Set as current client
         self.data_mgr.current_client = client_id
         
-        # Process the data
+        # Process the data based on chart type
         dataset_name = self.dataset_entry.get() or "clipboard_data"
-        dataset = self.data_mgr.load_clipboard_data(clipboard_text, dataset_name)
         
-        if not dataset:
-            messagebox.showerror("Error", "Could not process the data. Check the format.")
-            return
+        if self.chart_type.get() == "stacked_bar":
+            # Process as stacked bar chart data
+            dataset = self.data_mgr.load_clipboard_data(clipboard_text, dataset_name)
+            
+            if not dataset:
+                messagebox.showerror("Error", "Could not process the data. Check the format.")
+                return
+            
+            # Add client name to dataset
+            dataset['client_name'] = client_name
+            
+            # Create and save the chart
+            chart = StackedBarIncomeChart()
+            chart.plot(dataset)
+            
+            # Save with client name in the filename
+            safe_filename = dataset_name.replace(' ', '_').lower()
+            output_path = f"output/{client_id}_{safe_filename}.png"
+            chart.save_chart(output_path)
+            
+            # Show success message with file path
+            messagebox.showinfo("Success", f"Chart saved to {output_path}")
+            
+            # Display the chart
+            chart.show_chart()
         
-        # Add client name to dataset
-        dataset['client_name'] = client_name
-        
-        # Debug before creating chart
-        print(f"Dataset for chart:")
-        print(f"Client ID: {client_id}")
-        print(f"Months: {dataset['months']}")
-        print(f"Income values: {dataset['income_values']}")
-        print(f"Net income values: {dataset['net_income_values']}")
-        print(f"Client name: {dataset['client_name']}")
-        
-        # Create output directory if it doesn't exist
-        if not os.path.exists("output"):
-            os.makedirs("output")
-            print("Created output directory")
-        
-        # Generate and show the chart with improved net income handling
-        chart = StackedBarIncomeChart(client_name=client_name)
-        chart.plot(dataset)
-        chart.save_chart(f"output/{client_id}_{dataset_name}.png")
-        chart.show_chart()
-        
-        # Save data to file for persistence
-        try:
-            self.data_mgr.save_data()
-            print("Data saved successfully")
-        except Exception as save_error:
-            print(f"Error saving data: {save_error}")
-            messagebox.showwarning("Warning", 
-                                 f"Chart was generated but data could not be saved: {save_error}")
-        
-        messagebox.showinfo("Success", 
-                           f"Chart generated successfully and saved to 'output/{client_id}_{dataset_name}.png'")
+        else:  # daily_cash
+            try:
+                # For daily cash data, process it as CSV
+                import io
+                import pandas as pd
+                
+                # Try to parse the clipboard text as CSV
+                try:
+                    # First try comma separator
+                    df = pd.read_csv(io.StringIO(clipboard_text))
+                except:
+                    # If that fails, try tab separator
+                    try:
+                        df = pd.read_csv(io.StringIO(clipboard_text), sep='\t')
+                    except:
+                        # If that also fails, show error
+                        messagebox.showerror("Error", "Could not parse the data as CSV. Please check the format.")
+                        return
+                
+                # Process daily cash balance data
+                dataset = self.data_mgr.load_daily_cash_balance_data(df, dataset_name)
+                
+                # Store the current dataset and DataFrame for editing
+                self.current_dataset = dataset
+                self.current_df = df
+                self.edit_data_btn.config(state=tk.NORMAL)  # Enable the edit button
+                
+                # Add threshold lines if enabled
+                if self.use_lower_threshold.get():
+                    try:
+                        value = float(self.lower_threshold_value.get())
+                        dataset['lower_threshold'] = value
+                        dataset['lower_threshold_name'] = self.lower_threshold_name.get()
+                    except ValueError:
+                        print("Invalid lower threshold value, ignoring")
+                
+                if self.use_upper_threshold.get():
+                    try:
+                        value = float(self.upper_threshold_value.get())
+                        dataset['upper_threshold'] = value
+                        dataset['upper_threshold_name'] = self.upper_threshold_name.get()
+                    except ValueError:
+                        print("Invalid upper threshold value, ignoring")
+                
+                # Import the chart if not already imported
+                from charts.daily_cash_line import DailyCashBalanceChart
+                
+                # Create and save the chart
+                chart = DailyCashBalanceChart(client_name=client_name)
+                chart.plot(dataset)
+                
+                # Save with client name in the filename
+                safe_filename = dataset_name.replace(' ', '_').lower()
+                output_path = f"output/{client_id}_{safe_filename}.png"
+                chart.save_chart(output_path)
+                
+                # Show success message with file path
+                messagebox.showinfo("Success", f"Daily cash balance chart saved to {output_path}")
+                
+                # Display the chart
+                chart.show_chart()
+                
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                messagebox.showerror("Error", f"Error processing daily cash balance data: {str(e)}")
+                return
     
     def clear_text(self):
         """Clear the text area."""
@@ -564,10 +745,15 @@ First column = months, second = income, rest = expense categories"""
         return any(pattern in text for pattern in month_patterns)
 
     def upload_csv(self):
-        """Upload and process data from a CSV file."""
-        file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        """Upload and process a CSV file."""
+        # Ask user to select a CSV file
+        file_path = filedialog.askopenfilename(
+            title="Select CSV file",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+        
         if not file_path:
-            return
+            return  # User cancelled
         
         try:
             # Get client name and generate a safe client ID
@@ -588,183 +774,96 @@ First column = months, second = income, rest = expense categories"""
             # Set as current client
             self.data_mgr.current_client = client_id
             
-            with open(file_path, newline='') as csvfile:
-                reader = csv.reader(csvfile)
+            # Get dataset name
+            dataset_name = self.dataset_entry.get() or os.path.basename(file_path).replace(".csv", "")
+            
+            # Process based on chart type
+            if self.chart_type.get() == "stacked_bar":
+                # Load as stacked bar chart data
+                dataset = self.data_mgr.load_csv_data(file_path, dataset_name)
                 
-                # Read header row
-                headers = next(reader)
+                if not dataset:
+                    messagebox.showerror("Error", "Could not process the CSV file. Check the format.")
+                    return
                 
-                # Check if the next row is a type row
-                has_type_row = False
-                types = None
-                row_check = next(reader, None)
+                # Add client name to dataset
+                dataset['client_name'] = client_name
                 
-                if row_check and any(cell.lower() == 'type' for cell in row_check):
-                    has_type_row = True
-                    types = row_check
-                    first_data_row = next(reader, None)  # Get the first actual data row
-                else:
-                    first_data_row = row_check  # The row we read is actually the first data row
+                # Create and save the chart
+                chart = StackedBarIncomeChart()
+                chart.plot(dataset)
                 
-                if has_type_row:
-                    # Create mapping of column types
-                    column_types = {}
-                    for i, header in enumerate(headers):
-                        if i < len(types):
-                            column_types[header] = types[i].upper()
-                    
-                    # Find columns by type
-                    income_idx = None
-                    expense_columns = []
-                    net_income_idx = None
-                    
-                    for i, header in enumerate(headers):
-                        if i < len(types):
-                            column_type = types[i].upper()
-                            if column_type == "INCOME":
-                                income_idx = i
-                            elif column_type == "EXPENSE":
-                                expense_columns.append((i, header))
-                            elif "NET" in column_type and "INCOME" in column_type:
-                                net_income_idx = i
-                else:
-                    # Use default assumptions as before
-                    income_idx = headers.index('Income') if 'Income' in headers else 1
-                    net_income_idx = headers.index('Net Income') if 'Net Income' in headers else None
-                    expense_columns = [(i, header) for i, header in enumerate(headers) 
-                                      if header not in ['Month', 'Income', 'Net Income']]
+                # Save with client name in the filename
+                safe_filename = dataset_name.replace(' ', '_').lower()
+                output_path = f"output/{client_id}_{safe_filename}.png"
+                chart.save_chart(output_path)
                 
-                # Initialize data storage
-                months = []
-                income_values = []
-                expense_data = {headers[idx]: [] for idx, _ in expense_columns}
-                net_income_values = []
+                # Show success message with file path
+                messagebox.showinfo("Success", f"Chart saved to {output_path}")
                 
-                # Process the first data row if we have it
-                if first_data_row:
-                    months.append(first_data_row[0])
-                    
+                # Display the chart
+                chart.show_chart()
+                
+            else:  # daily_cash
+                # Import pandas to read the CSV
+                import pandas as pd
+                
+                # Read the CSV file
+                df = pd.read_csv(file_path)
+                
+                # Load into the text area for review
+                header = ",".join(df.columns)
+                sample_rows = "\n".join([",".join(map(str, row)) for row in df.values[:10]])
+                self.text_area.delete("1.0", tk.END)
+                self.text_area.insert("1.0", f"{header}\n{sample_rows}\n...\n({len(df)} rows total)")
+                
+                # Process daily cash balance data
+                dataset = self.data_mgr.load_daily_cash_balance_data(file_path, dataset_name)
+                
+                # Store the current dataset and DataFrame for editing
+                self.current_dataset = dataset
+                self.current_df = df
+                self.edit_data_btn.config(state=tk.NORMAL)  # Enable the edit button
+                
+                # Add threshold lines if enabled
+                if self.use_lower_threshold.get():
                     try:
-                        income_values.append(float(first_data_row[income_idx].replace(',', '')))
-                    except (ValueError, IndexError):
-                        income_values.append(0.0)
-                    
-                    for idx, header in expense_columns:
-                        try:
-                            if idx < len(first_data_row) and first_data_row[idx].strip():
-                                expense_data[header].append(float(first_data_row[idx].replace(',', '')))
-                            else:
-                                expense_data[header].append(0.0)
-                        except (ValueError, IndexError):
-                            expense_data[header].append(0.0)
-                    
-                    if net_income_idx is not None and net_income_idx < len(first_data_row):
-                        try:
-                            value = first_data_row[net_income_idx].strip()
-                            if value:
-                                net_income_values.append(float(value.replace(',', '')))
-                            else:
-                                # Calculate net income
-                                total_expenses = sum(expense_data[cat][-1] for cat in expense_data)
-                                net_income = income_values[-1] - total_expenses
-                                net_income_values.append(net_income)
-                        except (ValueError, IndexError):
-                            # Calculate net income on error
-                            total_expenses = sum(expense_data[cat][-1] for cat in expense_data)
-                            net_income = income_values[-1] - total_expenses
-                            net_income_values.append(net_income)
+                        value = float(self.lower_threshold_value.get())
+                        dataset['lower_threshold'] = value
+                        dataset['lower_threshold_name'] = self.lower_threshold_name.get()
+                    except ValueError:
+                        print("Invalid lower threshold value, ignoring")
                 
-                # Process the rest of the rows
-                for row in reader:
-                    if not row or not row[0].strip():
-                        continue
-                    
-                    months.append(row[0])
-                    
+                if self.use_upper_threshold.get():
                     try:
-                        income_values.append(float(row[income_idx].replace(',', '')))
-                    except (ValueError, IndexError):
-                        income_values.append(0.0)
-                    
-                    for idx, header in expense_columns:
-                        try:
-                            if idx < len(row) and row[idx].strip():
-                                expense_data[header].append(float(row[idx].replace(',', '')))
-                            else:
-                                expense_data[header].append(0.0)
-                        except (ValueError, IndexError):
-                            expense_data[header].append(0.0)
-                    
-                    if net_income_idx is not None and net_income_idx < len(row):
-                        try:
-                            value = row[net_income_idx].strip()
-                            if value:
-                                net_income_values.append(float(value.replace(',', '')))
-                            else:
-                                # Calculate net income
-                                total_expenses = sum(expense_data[cat][-1] for cat in expense_data)
-                                net_income = income_values[-1] - total_expenses
-                                net_income_values.append(net_income)
-                        except (ValueError, IndexError):
-                            # Calculate net income on error
-                            total_expenses = sum(expense_data[cat][-1] for cat in expense_data)
-                            net_income = income_values[-1] - total_expenses
-                            net_income_values.append(net_income)
-            
-            # Check if net income values are empty, calculate them if needed
-            if not net_income_values:
-                print("Net income values missing, calculating automatically")
-                for i in range(len(months)):
-                    total_expenses = sum(expense_data[cat][i] for cat in expense_data)
-                    net_income = income_values[i] - total_expenses
-                    net_income_values.append(net_income)
-                    print(f"Calculated net income for {months[i]}: {net_income}")
-            
-            # Create color palette
-            color_palette = [
-                '#4169E1', '#40E0D0', '#BA55D3', '#FF69B4', '#FBBC04', 
-                '#FF00FF', '#FF8000', '#32CD32', '#9370DB', '#008080'
-            ]
-            
-            expense_colors = {}
-            for i, category in enumerate(expense_data.keys()):
-                expense_colors[category] = color_palette[i % len(color_palette)]
-
-            dataset_name = self.dataset_entry.get() or "clipboard_data"
-            
-            dataset = {
-                'months': months,
-                'income_values': income_values,
-                'expense_data': expense_data,
-                'expense_colors': expense_colors,
-                'net_income_values': net_income_values,
-                'client_name': client_name
-            }
-
-            self.data_mgr.clients[client_id]["datasets"][dataset_name] = dataset
-            
-            # Create output directory if it doesn't exist
-            if not os.path.exists("output"):
-                os.makedirs("output")
-                print("Created output directory")
+                        value = float(self.upper_threshold_value.get())
+                        dataset['upper_threshold'] = value
+                        dataset['upper_threshold_name'] = self.upper_threshold_name.get()
+                    except ValueError:
+                        print("Invalid upper threshold value, ignoring")
                 
-            chart = StackedBarIncomeChart(client_name=client_name)
-            chart.plot(dataset)
-            chart.save_chart(f"output/{client_id}_{dataset_name}.png")
-            chart.show_chart()
+                # Import the chart if not already imported
+                from charts.daily_cash_line import DailyCashBalanceChart
+                
+                # Create and save the chart
+                chart = DailyCashBalanceChart(client_name=client_name)
+                chart.plot(dataset)
+                
+                # Save with client name in the filename
+                safe_filename = dataset_name.replace(' ', '_').lower()
+                output_path = f"output/{client_id}_{safe_filename}.png"
+                chart.save_chart(output_path)
+                
+                # Show success message with file path
+                messagebox.showinfo("Success", f"Daily cash balance chart saved to {output_path}")
+                
+                # Display the chart
+                chart.show_chart()
             
-            # Save data to file for persistence
-            try:
-                self.data_mgr.save_data()
-                print("Data saved successfully")
-            except Exception as save_error:
-                print(f"Error saving data: {save_error}")
-                messagebox.showwarning("Warning", 
-                                     f"Chart was generated but data could not be saved: {save_error}")
-            
-            messagebox.showinfo("Success", f"Chart generated successfully from CSV and saved to 'output/{client_id}_{dataset_name}.png'.")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to process CSV: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Error", f"Error processing CSV file: {str(e)}")
 
     def save_current_data(self):
         """Manually save the current data."""
@@ -819,6 +918,126 @@ First column = months, second = income, rest = expense categories"""
             import traceback
             traceback.print_exc()
             messagebox.showerror("Error", f"Failed to save data: {e}")
+
+    def open_data_editor(self):
+        """Open a data editor window for editing the current dataset."""
+        if self.current_df is None:
+            messagebox.showinfo("No Data", "Please process data first before editing.")
+            return
+        
+        # Create a new window for data editing
+        editor_window = tk.Toplevel(self.root)
+        editor_window.title("Data Editor")
+        editor_window.geometry("800x600")
+        
+        # Create a frame for the table
+        table_frame = tk.Frame(editor_window)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Create scrollbars
+        y_scrollbar = tk.Scrollbar(table_frame)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        x_scrollbar = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
+        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Create a Text widget for displaying and editing data
+        self.edit_text = tk.Text(table_frame, wrap=tk.NONE, 
+                                yscrollcommand=y_scrollbar.set,
+                                xscrollcommand=x_scrollbar.set)
+        self.edit_text.pack(fill=tk.BOTH, expand=True)
+        
+        y_scrollbar.config(command=self.edit_text.yview)
+        x_scrollbar.config(command=self.edit_text.xview)
+        
+        # Format the DataFrame as CSV and insert into the Text widget
+        csv_data = self.current_df.to_csv(index=False)
+        self.edit_text.insert(tk.END, csv_data)
+        
+        # Add control buttons at the bottom
+        buttons_frame = tk.Frame(editor_window)
+        buttons_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Validate and save button
+        save_button = tk.Button(buttons_frame, text="Apply Changes", 
+                               command=lambda: self.apply_data_changes(self.edit_text.get("1.0", tk.END)))
+        save_button.pack(side=tk.LEFT, padx=5)
+        
+        # Cancel button
+        cancel_button = tk.Button(buttons_frame, text="Cancel", command=editor_window.destroy)
+        cancel_button.pack(side=tk.LEFT, padx=5)
+        
+        # Add helper text
+        help_text = tk.Label(editor_window, text="Edit the CSV data directly. Make sure to keep the header row intact.", 
+                            justify=tk.LEFT, padx=10, pady=5)
+        help_text.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    def apply_data_changes(self, text_data):
+        """Apply changes made in the data editor."""
+        try:
+            import io
+            import pandas as pd
+            
+            # Parse the modified CSV text
+            new_df = pd.read_csv(io.StringIO(text_data))
+            
+            # Store the updated DataFrame
+            self.current_df = new_df
+            
+            # Re-process the data
+            client_id = self.data_mgr.current_client
+            dataset_name = self.dataset_entry.get() or "clipboard_data"
+            
+            # Process the updated data
+            dataset = self.data_mgr.load_daily_cash_balance_data(new_df, dataset_name)
+            
+            # Add threshold lines if enabled
+            if self.use_lower_threshold.get():
+                try:
+                    value = float(self.lower_threshold_value.get())
+                    dataset['lower_threshold'] = value
+                    dataset['lower_threshold_name'] = self.lower_threshold_name.get()
+                except ValueError:
+                    print("Invalid lower threshold value, ignoring")
+            
+            if self.use_upper_threshold.get():
+                try:
+                    value = float(self.upper_threshold_value.get())
+                    dataset['upper_threshold'] = value
+                    dataset['upper_threshold_name'] = self.upper_threshold_name.get()
+                except ValueError:
+                    print("Invalid upper threshold value, ignoring")
+            
+            # Update the current dataset
+            self.current_dataset = dataset
+            
+            # Create and save the chart
+            client_name = self.client_entry.get()
+            chart = DailyCashBalanceChart(client_name=client_name)
+            chart.plot(dataset)
+            
+            # Save with client name in the filename
+            safe_filename = dataset_name.replace(' ', '_').lower()
+            output_path = f"output/{client_id}_{safe_filename}.png"
+            chart.save_chart(output_path)
+            
+            # Show success message with file path
+            messagebox.showinfo("Success", "Data updated and chart regenerated.\n" +
+                               f"Chart saved to {output_path}")
+            
+            # Display the chart
+            chart.show_chart()
+            
+            # Close the editor window
+            for widget in self.root.winfo_children():
+                if isinstance(widget, tk.Toplevel) and widget.title() == "Data Editor":
+                    widget.destroy()
+                    break
+                    
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Error", f"Error applying changes: {str(e)}")
 
 def main():
     root = tk.Tk()

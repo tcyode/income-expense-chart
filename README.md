@@ -19,6 +19,25 @@ It also saves the chart as a picture file (PNG 📸) so you can use it anywhere.
 
 ## 💰 Daily Cash Balance Chart
 
+This project now includes a full-featured daily cash balance visualization tool that:
+- Shows multiple account balances over time as separate lines
+- Displays a total balance line across all accounts
+- Supports both upper (green) and lower (red) threshold lines with custom labels
+- Provides intuitive date handling and formatting
+- Includes a data editor for fixing date mistakes or value errors
+- Supports negative account balances (like credit cards or loans)
+
+Input format for daily cash balance data:
+```csv
+Date,Account,Balance
+2023-01-01,Checking,5000.00
+2023-01-01,Savings,15000.00
+2023-01-01,Credit Card,-2500.00
+...
+```
+
+## 💰 Daily Cash Balance Chart
+
 This project also includes a daily cash balance visualization tool that:
 - Shows multiple account balances over time
 - Displays a total balance line across all accounts
@@ -140,6 +159,9 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 - Type row support to accurately identify Income, Expense, and Net Income columns
 - CSV file import option for structured data
 - Automatic net income calculation when not provided in the data
+- Daily cash balance visualization with multiple account lines
+- Upper (green) and lower (red) threshold lines with custom labels
+- Data editor for fixing date and value errors
 
 ---
 
@@ -181,26 +203,48 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 - ✅ Fix NET INCOME display as line graph, not stacked bar
 - ✅ Automatic NET INCOME calculation
 
-### Phase 1.5: Daily Cash Balance Chart (Current Priority)
-- [ ] Create daily cash balance line chart module
-  - [ ] Set up DailyCashBalanceChart class extending BaseChart
-  - [ ] Implement multi-line visualization for multiple accounts
-  - [ ] Add total balance calculation and display
-  - [ ] Implement date axis formatting
-  - [ ] Add support for future projections (dotted line)
-  - [ ] Add threshold line functionality
-- [ ] Add data processing for daily cash balances
-  - [ ] Create CSV import function for daily cash data
-  - [ ] Implement date parsing and handling
-  - [ ] Set up account-based data transformation
-- [ ] Create basic UI for cash balance charts
-  - [ ] Build file upload interface
-  - [ ] Add chart configuration options
-  - [ ] Implement chart rendering and saving
+### Phase 1.5: Daily Cash Balance Chart (Complete) ✅
+- ✅ Create daily cash balance line chart module
+  - ✅ Set up DailyCashBalanceChart class extending BaseChart
+  - ✅ Implement multi-line visualization for multiple accounts
+  - ✅ Add total balance calculation and display
+  - ✅ Implement date axis formatting
+  - ✅ Add support for future projections with dotted lines
+  - ✅ Add threshold line functionality with customizable labels
+- ✅ Add data processing for daily cash balances
+  - ✅ Create CSV import function for daily cash data
+  - ✅ Implement date parsing and handling
+  - ✅ Set up account-based data transformation
+  - ✅ Support for negative balance values
+- ✅ Create enhanced UI for cash balance charts
+  - ✅ Build file upload interface and clipboard input
+  - ✅ Add chart configuration options with threshold controls
+  - ✅ Implement chart rendering and saving
+  - ✅ Add data editor for fixing dates and values
 
 Estimated time: 3-5 hours
 
-### Phase 2: UI Enhancements (Next)
+### Phase 1.6: Cash Flow Area Chart (Current Priority)
+- [ ] Create cash flow area chart module
+  - [ ] Set up CashFlowAreaChart class extending BaseChart
+  - [ ] Implement flowing area visualization for cash movements
+  - [ ] Support for multiple transactions in the same day
+  - [ ] Handle running balance calculations
+  - [ ] Add shaded areas for positive and negative flow regions
+- [ ] Add data processing for cash flow data
+  - [ ] Create data loader for transactions-based format
+  - [ ] Implement date grouping and sorting
+  - [ ] Support running balance verification
+  - [ ] Add transaction categorization
+- [ ] Create UI for cash flow area charts
+  - [ ] Build specialized upload interface
+  - [ ] Add filtering capabilities by category
+  - [ ] Implement zooming to specific date ranges
+  - [ ] Support transaction annotations
+
+Estimated time: 5-7 hours
+
+### Phase 2: UI Enhancements (Current Priority)
 - [ ] Improved UI layout and design
 - [ ] Direct Excel file import
 - [ ] Save/load configuration
@@ -243,6 +287,9 @@ Here are some magical seeds we can plant later 🌱:
 - If you add too many expense categories, labels on bars may overlap 🤹
 - ~~Net Income showing as an expense category in stacked bars instead of as a line~~ Fixed! ✅
 - Client data is not being saved to disk. The data structure works in memory but `save_data()` method is not being called after chart generation. This needs to be fixed for true data persistence.
+- There's an error when adding a lower threshold and clicking "Process & Generate Chart" in some scenarios - investigating this issue
+- Sometimes data with year-end transitions (Dec-Jan) may show anomalies in date formatting
+- JSON serialization can fail with certain pandas objects (added workaround with custom encoder)
 
 ---
 
@@ -253,3 +300,32 @@ Thanks for being part of this — future-you is gonna love you for keeping it ti
 ## ⚠️ Known Issues
 
 - **Client Data Persistence**: Currently, client data is stored in memory but not automatically saved to disk. Data will be lost when the application is closed. This will be fixed in an upcoming update.
+
+## 📊 Chart Types
+
+The project currently supports two types of financial charts:
+
+1. **Monthly Income vs. Expense Chart** (Income/Expense Stacked Bar Chart)
+   - Green bars for income
+   - Stacked colored bars for expenses by category
+   - Red dotted line for net income
+   - Last month highlights with category labels
+
+2. **Daily Cash Balance Chart** (Multi-line Cash Flow Chart)
+   - Line graph showing balance for each account over time
+   - Bold line showing total balance across all accounts
+   - Customizable threshold lines (upper green, lower red)
+   - Support for negative balances (credit cards, loans)
+   - Date-based X-axis with proper formatting
+   - Built-in data editor for fixing mistakes
+
+## 📊 Upcoming Chart Types
+
+The next planned chart type is a **Cash Flow Area Chart**:
+
+- Visualizes cash flow as a flowing area chart
+- Supports multiple transactions on the same day
+- Works with running balance data structure
+- Includes positive/negative region visualization
+- Offers date range zooming and filtering
+- Provides transaction annotation capabilities
