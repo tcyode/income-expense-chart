@@ -34,6 +34,9 @@ def main():
     # Display the chart
     chart.show_chart()
     
+    # Save data to file for persistence
+    data_mgr.save_data()
+    
     print("Chart generated successfully! Check the output directory.")
 
 if __name__ == "__main__":

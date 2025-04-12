@@ -15,6 +15,25 @@ class FinancialDataManager:
         """Initialize the data manager."""
         self.clients = {}
         self.current_client = None
+        
+        # Try to load any existing clients from saved files
+        self.load_existing_clients()
+    
+    def load_existing_clients(self):
+        """Load any existing client data files from the client_data directory."""
+        client_dir = "client_data"
+        if os.path.exists(client_dir):
+            for filename in os.listdir(client_dir):
+                if filename.endswith(".json"):
+                    client_id = filename[:-5]  # Remove .json extension
+                    try:
+                        file_path = os.path.join(client_dir, filename)
+                        with open(file_path, 'r') as f:
+                            client_data = json.load(f)
+                            self.clients[client_id] = client_data
+                            print(f"Loaded client data from {file_path}")
+                    except Exception as e:
+                        print(f"Error loading client data from {filename}: {e}")
     
     def add_client(self, client_id, client_name=None):
         """Add a new client to the system."""
@@ -286,15 +305,42 @@ class FinancialDataManager:
     
     def save_data(self, directory="client_data"):
         """Save all client data to JSON files."""
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        try:
+            print(f"Attempting to save data for {len(self.clients)} clients to {directory}")
             
-        for client_id, client_data in self.clients.items():
-            file_path = os.path.join(directory, f"{client_id}.json")
-            with open(file_path, 'w') as f:
-                json.dump(client_data, f, indent=4)
-        
-        return True
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                print(f"Created directory: {directory}")
+            
+            # Ensure the directory exists
+            if not os.path.isdir(directory):
+                print(f"Warning: {directory} exists but is not a directory. Creating a new directory.")
+                os.makedirs(directory, exist_ok=True)
+                
+            for client_id, client_data in self.clients.items():
+                datasets = client_data.get('datasets', {})
+                print(f"Processing client {client_id} with {len(datasets)} datasets")
+                
+                # Print a sample of the data for debugging
+                for dataset_name, dataset in datasets.items():
+                    if 'months' in dataset:
+                        print(f"  Dataset {dataset_name} contains {len(dataset['months'])} months of data")
+                        if dataset.get('months') and len(dataset['months']) > 0:
+                            print(f"    First month: {dataset['months'][0]}")
+                            print(f"    First income value: {dataset['income_values'][0] if 'income_values' in dataset and dataset['income_values'] else 'N/A'}")
+                            print(f"    Expense categories: {list(dataset.get('expense_data', {}).keys())}")
+                
+                file_path = os.path.join(directory, f"{client_id}.json")
+                with open(file_path, 'w') as f:
+                    json.dump(client_data, f, indent=4)
+                print(f"Data saved for client {client_id} to {file_path}")
+            
+            return True
+        except Exception as e:
+            import traceback
+            print(f"Error saving data: {e}")
+            traceback.print_exc()
+            return False
     
     def load_saved_data(self, client_id, directory="client_data"):
         """Load client data from a saved JSON file."""

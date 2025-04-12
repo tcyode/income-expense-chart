@@ -38,6 +38,68 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 
 ---
 
+## 🌿 Development Phases
+
+### Phase 0: Prototype
+- ✅ Basic script with hardcoded data
+- ✅ Generate static PNG image
+- ✅ Simple stacked bar chart with income and expenses
+
+### Phase 1: Data Layer (Current phase)
+- ✅ Create data loading module
+- ✅ Set up a simple data structure to store client information and financial data
+- ✅ Add basic file-based persistence so data doesn't need to be re-entered
+- ✅ Support for clipboard data import
+- ✅ CSV file import capability
+- ✅ Type row for identifying column purposes
+- ✅ Fix NET INCOME display as line graph, not stacked bar
+- ✅ Automatic NET INCOME calculation
+
+### Phase 1.5: Daily Cash Balance Chart (Current Priority)
+- [ ] Create daily cash balance line chart module
+  - [ ] Set up DailyCashBalanceChart class extending BaseChart
+  - [ ] Implement multi-line visualization for multiple accounts
+  - [ ] Add total balance calculation and display
+  - [ ] Implement date axis formatting
+  - [ ] Add support for future projections (dotted line)
+  - [ ] Add threshold line functionality
+- [ ] Add data processing for daily cash balances
+  - [ ] Create CSV import function for daily cash data
+  - [ ] Implement date parsing and handling
+  - [ ] Set up account-based data transformation
+- [ ] Create basic UI for cash balance charts
+  - [ ] Build file upload interface
+  - [ ] Add chart configuration options
+  - [ ] Implement chart rendering and saving
+
+Estimated time: 3-5 hours
+
+### Phase 2: UI Enhancements (Next)
+- ✅ Create a simple GUI interface with Tkinter
+- [ ] Improve the UI to allow:
+  - [ ] Select data files with dialog
+  - [ ] Choose chart types (add more chart options)
+  - [ ] Select time periods with filters
+  - [ ] Choose clients from a dropdown
+- [ ] Direct Excel file import
+- [ ] Save/load configuration
+- [ ] Theme customization
+
+### Phase 3: Advanced Features
+- [ ] Interactive dashboard
+- [ ] Trend analysis
+- [ ] Multiple chart types
+- [ ] Comparison views
+- [ ] Data filtering options
+
+### Phase 4: Distribution & Production
+- [ ] Standalone executable
+- [ ] Client management system
+- [ ] Scheduled reports
+- [ ] Cloud sync option
+
+---
+
 ## 🔮 What's Next (Future Dev Options)
 Here are some magical seeds we can plant later 🌱:
 

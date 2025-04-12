@@ -8,6 +8,8 @@ from data_loader import FinancialDataManager
 from charts.stacked_bar import StackedBarIncomeChart
 import re
 import csv
+import os
+import json
 
 class ClipboardToolApp:
     def __init__(self, root):
@@ -15,11 +17,88 @@ class ClipboardToolApp:
         self.root.title("Financial Chart - Clipboard Tool")
         self.root.geometry("600x500")
         
+        # Ensure directories exist
+        if not os.path.exists("client_data"):
+            os.makedirs("client_data")
+            print("Created client_data directory")
+        if not os.path.exists("output"):
+            os.makedirs("output")
+            print("Created output directory")
+        
+        # Test direct file creation to ensure permissions are correct
+        test_file = os.path.join("client_data", "test_file.txt")
+        try:
+            with open(test_file, 'w') as f:
+                f.write("This is a test file to verify write permissions.")
+            print(f"Successfully created test file: {test_file}")
+        except Exception as e:
+            print(f"ERROR: Cannot write to client_data directory: {e}")
+        
+        # Initialize the data manager (but don't create default client)
         self.data_mgr = FinancialDataManager()
-        self.data_mgr.add_client("clipboard_client", "Clipboard Data")
+        
+        # Migrate any legacy data
+        self.migrate_legacy_data()
         
         # Create widgets
         self.create_widgets()
+    
+    def migrate_legacy_data(self):
+        """Migrate data from legacy clipboard_client.json if it exists."""
+        legacy_file = os.path.join("client_data", "clipboard_client.json")
+        if os.path.exists(legacy_file):
+            try:
+                # Load the legacy data
+                with open(legacy_file, 'r') as f:
+                    legacy_data = json.load(f)
+                
+                # Get the client name from the file
+                client_name = legacy_data.get("name", "Migrated Client")
+                
+                # Create a proper client ID
+                client_id = client_name.lower().replace(' ', '_').replace('-', '_')
+                
+                # Check if we already have this client
+                if client_id not in self.data_mgr.clients:
+                    # Create the new client with the proper ID
+                    self.data_mgr.add_client(client_id, client_name)
+                    
+                    # Copy all datasets
+                    self.data_mgr.clients[client_id]["datasets"] = legacy_data.get("datasets", {})
+                    
+                    # Save the new client data
+                    self.data_mgr.save_data()
+                    print(f"Migrated legacy data to new client: {client_id}")
+                    
+                    # Rename the old file so it doesn't get loaded again
+                    try:
+                        backup_file = os.path.join("client_data", "clipboard_client.json.bak")
+                        if os.path.exists(backup_file):
+                            os.remove(backup_file)  # Remove existing backup if it exists
+                        os.rename(legacy_file, backup_file)
+                        print("Renamed legacy file to clipboard_client.json.bak")
+                    except Exception as rename_err:
+                        print(f"Error renaming legacy file: {rename_err}, trying to remove it")
+                        try:
+                            os.remove(legacy_file)
+                            print("Removed legacy file instead of renaming")
+                        except Exception as remove_err:
+                            print(f"Error removing legacy file: {remove_err}")
+            except Exception as e:
+                print(f"Error migrating legacy data: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # If we can't properly migrate, try to rename or remove the file
+                try:
+                    os.rename(legacy_file, os.path.join("client_data", "clipboard_client.json.error"))
+                    print("Renamed problematic legacy file to clipboard_client.json.error")
+                except Exception:
+                    try:
+                        os.remove(legacy_file)
+                        print("Removed problematic legacy file")
+                    except Exception as remove_err:
+                        print(f"Cannot remove problematic legacy file: {remove_err}")
     
     def create_widgets(self):
         # Instructions label
@@ -76,6 +155,13 @@ First column = months, second = income, rest = expense categories"""
         # Add CSV upload button
         self.upload_btn = tk.Button(button_frame, text="Upload CSV", command=self.upload_csv)
         self.upload_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Add Save Data button
+        self.save_btn = tk.Button(button_frame, text="Save Data", 
+                                 command=self.save_current_data,
+                                 bg="#e6ffe6",  # Light green background
+                                 font=("Arial", 10, "bold"))
+        self.save_btn.pack(side=tk.LEFT, padx=5)
     
     def process_data(self):
         """Process the clipboard data and generate a chart."""
@@ -85,10 +171,23 @@ First column = months, second = income, rest = expense categories"""
             messagebox.showerror("Error", "Please paste some data first!")
             return
         
-        # Update client name if changed
+        # Get client name and generate a safe client ID
         client_name = self.client_entry.get()
-        if client_name != self.data_mgr.clients.get("clipboard_client", {}).get("name"):
-            self.data_mgr.clients["clipboard_client"]["name"] = client_name
+        # Create a safe client ID from the name (lowercase, replace spaces with underscores)
+        client_id = client_name.lower().replace(' ', '_').replace('-', '_')
+        
+        # Check if this is a new client
+        if client_id not in self.data_mgr.clients:
+            print(f"Creating new client: {client_name} with ID: {client_id}")
+            self.data_mgr.add_client(client_id, client_name)
+        else:
+            # Update existing client name if changed
+            if client_name != self.data_mgr.clients[client_id].get("name"):
+                self.data_mgr.clients[client_id]["name"] = client_name
+                print(f"Updated client name for {client_id} to {client_name}")
+        
+        # Set as current client
+        self.data_mgr.current_client = client_id
         
         # Process the data
         dataset_name = self.dataset_entry.get() or "clipboard_data"
@@ -103,19 +202,34 @@ First column = months, second = income, rest = expense categories"""
         
         # Debug before creating chart
         print(f"Dataset for chart:")
+        print(f"Client ID: {client_id}")
         print(f"Months: {dataset['months']}")
         print(f"Income values: {dataset['income_values']}")
         print(f"Net income values: {dataset['net_income_values']}")
         print(f"Client name: {dataset['client_name']}")
         
+        # Create output directory if it doesn't exist
+        if not os.path.exists("output"):
+            os.makedirs("output")
+            print("Created output directory")
+        
         # Generate and show the chart with improved net income handling
         chart = StackedBarIncomeChart(client_name=client_name)
         chart.plot(dataset)
-        chart.save_chart(f"output/{dataset_name}.png")
+        chart.save_chart(f"output/{client_id}_{dataset_name}.png")
         chart.show_chart()
         
+        # Save data to file for persistence
+        try:
+            self.data_mgr.save_data()
+            print("Data saved successfully")
+        except Exception as save_error:
+            print(f"Error saving data: {save_error}")
+            messagebox.showwarning("Warning", 
+                                 f"Chart was generated but data could not be saved: {save_error}")
+        
         messagebox.showinfo("Success", 
-                           f"Chart generated successfully and saved to 'output/{dataset_name}.png'")
+                           f"Chart generated successfully and saved to 'output/{client_id}_{dataset_name}.png'")
     
     def clear_text(self):
         """Clear the text area."""
@@ -219,6 +333,31 @@ First column = months, second = income, rest = expense categories"""
                 messagebox.showerror("Error", "No data found")
                 return
             
+            # Get client name and generate a safe client ID
+            client_name = self.client_entry.get()
+            # Create a safe client ID from the name (lowercase, replace spaces with underscores)
+            client_id = client_name.lower().replace(' ', '_').replace('-', '_')
+            
+            # Check if this is a new client
+            if client_id not in self.data_mgr.clients:
+                print(f"Creating new client: {client_name} with ID: {client_id}")
+                self.data_mgr.add_client(client_id, client_name)
+            else:
+                # Update existing client name if changed
+                if client_name != self.data_mgr.clients[client_id].get("name"):
+                    self.data_mgr.clients[client_id]["name"] = client_name
+                    print(f"Updated client name for {client_id} to {client_name}")
+            
+            # Set as current client
+            self.data_mgr.current_client = client_id
+            
+            # Force save client data to ensure it exists even before processing
+            try:
+                self.data_mgr.save_data()
+                print(f"Saved initial client data for {client_id}")
+            except Exception as e:
+                print(f"Error saving initial client data: {e}")
+            
             # Debugging: Print the raw lines
             print("Raw lines:", lines)
             
@@ -307,27 +446,30 @@ First column = months, second = income, rest = expense categories"""
                 months.append(values[0])
                 
                 try:
-                    income = float(values[income_idx].replace(',', ''))
+                    income_str = values[income_idx].replace(',', '')
+                    income = float(income_str)
                     income_values.append(income)
-                except (ValueError, IndexError):
-                    print(f"Income value error in line: {line}")
+                except (ValueError, IndexError) as e:
+                    print(f"Income value error in line: {line}, error: {e}")
                     income_values.append(0.0)
                 
                 for idx, header in expense_columns:
                     try:
                         if idx < len(values) and values[idx].strip():
-                            value = float(values[idx].replace(',', ''))
+                            # Ensure we're converting a string to float
+                            expense_str = str(values[idx]).replace(',', '')
+                            value = float(expense_str)
                             expense_data[header].append(value)
                         else:
                             expense_data[header].append(0.0)
-                    except (ValueError, IndexError):
-                        print(f"Error parsing expense {header} in line: {line}")
+                    except (ValueError, IndexError) as e:
+                        print(f"Error parsing expense {header} in line: {line}, error: {e}")
                         expense_data[header].append(0.0)
                 
                 if net_income_idx is not None and net_income_idx < len(values):
                     try:
-                        value = values[net_income_idx].strip()
-                        if value:
+                        value = str(values[net_income_idx]).strip()
+                        if value and value.lower() != 'nan':
                             net_income = float(value.replace(',', ''))
                             net_income_values.append(net_income)
                             print(f"Parsed net income: {net_income}")
@@ -360,10 +502,10 @@ First column = months, second = income, rest = expense categories"""
             for i, category in enumerate(expense_data.keys()):
                 expense_colors[category] = color_palette[i % len(color_palette)]
             
-            client_name = self.client_entry.get() or "Clipboard Client"
             dataset_name = self.dataset_entry.get() or "clipboard_data"
             
             print(f"\nFinal data prepared for charting:")
+            print(f"Client: {client_name} (ID: {client_id})")
             print(f"Months: {months}")
             print(f"Income values: {income_values}")
             for cat, vals in expense_data.items():
@@ -379,19 +521,41 @@ First column = months, second = income, rest = expense categories"""
                 'client_name': client_name
             }
             
-            self.data_mgr.clients["clipboard_client"]["name"] = client_name
-            self.data_mgr.clients["clipboard_client"]["datasets"][dataset_name] = dataset
+            # Explicitly assign the dataset to the client's datasets dictionary
+            self.data_mgr.clients[client_id]["datasets"][dataset_name] = dataset
+            
+            # Verify the dataset was added and print contents for debugging
+            print(f"Dataset '{dataset_name}' added to client '{client_id}' with {len(dataset['months'])} months of data")
+            print(f"Client now has {len(self.data_mgr.clients[client_id]['datasets'])} datasets")
+            
+            # Create output directory if it doesn't exist
+            if not os.path.exists("output"):
+                os.makedirs("output")
+                print("Created output directory")
             
             chart = StackedBarIncomeChart(client_name=client_name)
             chart.plot(dataset)
-            chart.save_chart(f"output/{dataset_name}.png")
+            chart.save_chart(f"output/{client_id}_{dataset_name}.png")
             chart.show_chart()
             
+            # Save data to file for persistence
+            try:
+                print(f"Saving data to disk for client {client_id} with datasets: {list(self.data_mgr.clients[client_id]['datasets'].keys())}")
+                self.data_mgr.save_data()
+                print("Data saved successfully")
+            except Exception as save_error:
+                print(f"Error saving data: {save_error}")
+                messagebox.showwarning("Warning", 
+                                     f"Chart was generated but data could not be saved: {save_error}")
+            
             messagebox.showinfo("Success", 
-                               f"Chart generated successfully and saved to 'output/{dataset_name}.png'")
+                               f"Chart generated successfully and saved to 'output/{client_id}_{dataset_name}.png'")
         except Exception as e:
+            print(f"Error processing data: {str(e)}")
+            import traceback
+            traceback.print_exc()
             messagebox.showerror("Error", f"Error processing data: {str(e)}\n\nPlease check the data format.")
-            raise
+            return False
 
     def _is_likely_month(self, text):
         """Check if text is likely a month."""
@@ -406,6 +570,24 @@ First column = months, second = income, rest = expense categories"""
             return
         
         try:
+            # Get client name and generate a safe client ID
+            client_name = self.client_entry.get()
+            # Create a safe client ID from the name (lowercase, replace spaces with underscores)
+            client_id = client_name.lower().replace(' ', '_').replace('-', '_')
+            
+            # Check if this is a new client
+            if client_id not in self.data_mgr.clients:
+                print(f"Creating new client: {client_name} with ID: {client_id}")
+                self.data_mgr.add_client(client_id, client_name)
+            else:
+                # Update existing client name if changed
+                if client_name != self.data_mgr.clients[client_id].get("name"):
+                    self.data_mgr.clients[client_id]["name"] = client_name
+                    print(f"Updated client name for {client_id} to {client_name}")
+            
+            # Set as current client
+            self.data_mgr.current_client = client_id
+            
             with open(file_path, newline='') as csvfile:
                 reader = csv.reader(csvfile)
                 
@@ -548,25 +730,95 @@ First column = months, second = income, rest = expense categories"""
             for i, category in enumerate(expense_data.keys()):
                 expense_colors[category] = color_palette[i % len(color_palette)]
 
+            dataset_name = self.dataset_entry.get() or "clipboard_data"
+            
             dataset = {
                 'months': months,
                 'income_values': income_values,
                 'expense_data': expense_data,
                 'expense_colors': expense_colors,
                 'net_income_values': net_income_values,
-                'client_name': self.client_entry.get() or "Clipboard Client"
+                'client_name': client_name
             }
 
-            self.data_mgr.clients["clipboard_client"]["datasets"][self.dataset_entry.get() or "clipboard_data"] = dataset
+            self.data_mgr.clients[client_id]["datasets"][dataset_name] = dataset
             
-            chart = StackedBarIncomeChart(client_name=dataset['client_name'])
+            # Create output directory if it doesn't exist
+            if not os.path.exists("output"):
+                os.makedirs("output")
+                print("Created output directory")
+                
+            chart = StackedBarIncomeChart(client_name=client_name)
             chart.plot(dataset)
-            chart.save_chart(f"output/{self.dataset_entry.get() or 'clipboard_data'}.png")
+            chart.save_chart(f"output/{client_id}_{dataset_name}.png")
             chart.show_chart()
             
-            messagebox.showinfo("Success", "Chart generated successfully from CSV.")
+            # Save data to file for persistence
+            try:
+                self.data_mgr.save_data()
+                print("Data saved successfully")
+            except Exception as save_error:
+                print(f"Error saving data: {save_error}")
+                messagebox.showwarning("Warning", 
+                                     f"Chart was generated but data could not be saved: {save_error}")
+            
+            messagebox.showinfo("Success", f"Chart generated successfully from CSV and saved to 'output/{client_id}_{dataset_name}.png'.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to process CSV: {str(e)}")
+
+    def save_current_data(self):
+        """Manually save the current data."""
+        try:
+            # Get client name and generate a safe client ID
+            client_name = self.client_entry.get()
+            client_id = client_name.lower().replace(' ', '_').replace('-', '_')
+            
+            # Get the dataset name
+            dataset_name = self.dataset_entry.get() or "clipboard_data"
+            
+            # Check if we have this client
+            if client_id not in self.data_mgr.clients:
+                # Create the client if it doesn't exist
+                self.data_mgr.add_client(client_id, client_name)
+                print(f"Created new client {client_name} with ID {client_id}")
+            
+            # Check if we have data in the text area that hasn't been processed
+            clipboard_text = self.text_area.get("1.0", tk.END).strip()
+            if len(clipboard_text) > 10:
+                # Try to process the data in the text area if it hasn't been processed yet
+                print("Found data in the text area. Attempting to process it.")
+                try:
+                    self.process_with_fixed_format(clipboard_text)
+                    # Return after processing since it will also save
+                    return
+                except Exception as e:
+                    print(f"Error processing text data: {e}")
+            
+            # If client has no datasets, show a warning
+            if not self.data_mgr.clients[client_id].get("datasets"):
+                print(f"Warning: Client {client_name} has no datasets to save.")
+                messagebox.showwarning("No Data", 
+                                     f"Client {client_name} has no datasets to save.\n\nPlease paste data and process it first.")
+                return
+            
+            # Print information about what we're saving
+            print(f"Saving client {client_id} with datasets: {list(self.data_mgr.clients[client_id]['datasets'].keys())}")
+            for ds_name, dataset in self.data_mgr.clients[client_id]['datasets'].items():
+                if 'months' in dataset:
+                    print(f"  Dataset {ds_name}: {len(dataset['months'])} months of data")
+            
+            # Save the data to disk
+            success = self.data_mgr.save_data()
+            
+            if success:
+                messagebox.showinfo("Success", f"Data saved successfully for client: {client_name}")
+            else:
+                messagebox.showwarning("Warning", "Data may not have saved correctly. Check the console for details.")
+        except Exception as e:
+            print(f"Error saving data: {e}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Error", f"Failed to save data: {e}")
 
 def main():
     root = tk.Tk()
