@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🌟 Monthly Income vs. Expense Chart Generator (Baba Style)
 
 Hi there, friend! 👋 Welcome to this cozy little Python project. It helps you make a beautiful chart that shows how much money came in 💚, how much went out 💸, and what's left each month ➕ ➖ = ❤️.
@@ -7,14 +6,45 @@ Hi there, friend! 👋 Welcome to this cozy little Python project. It helps you 
 
 ## 🎯 What This Project Does
 
-This script creates a colorful chart from **September 2024 to March 2025**, showing:
+This project creates colorful financial charts showing:
 
 ✅ Green bars for **income** (money in)
-✅ Stacked bars for **expenses** by type (like payroll, royalties, etc.)
+✅ Stacked bars for **expenses** by type (like payroll, materials, etc.)
 ✅ A dotted red line showing **net income** (income - expenses)
-✅ Bonus! It highlights March 2025 with cute labels ✨
+✅ Bonus! It highlights the last month with category labels ✨
+✅ Daily cash balance visualization with multiple account lines
+✅ Support for future balance projections with dotted lines
 
 It also saves the chart as a picture file (PNG 📸) so you can use it anywhere.
+
+## 💰 Daily Cash Balance Chart
+
+This project now includes a full-featured daily cash balance visualization tool that:
+- Shows multiple account balances over time as separate lines
+- Displays a total balance line across all accounts
+- Supports both upper (green) and lower (red) threshold lines with custom labels
+- Provides intuitive date handling and formatting
+- Includes a data editor for fixing date mistakes or value errors
+- Supports negative account balances (like credit cards or loans)
+
+Input format for daily cash balance data:
+```csv
+Date,Account,Balance
+2023-01-01,Checking,5000.00
+2023-01-01,Savings,15000.00
+2023-01-01,Credit Card,-2500.00
+...
+```
+
+## 💰 Daily Cash Balance Chart
+
+This project also includes a daily cash balance visualization tool that:
+- Shows multiple account balances over time
+- Displays a total balance line across all accounts
+- Supports future projections with a dotted line
+- Can display threshold levels for monitoring
+
+Input format for cash balance data:
 
 ---
 
@@ -32,8 +62,9 @@ pip install -r requirements.txt  # grab the tools you need 🎨
 
 ## ▶️ How to Run the Chart (Every Time)
 
-After you’ve set it up once:
+There are two ways to use this tool:
 
+### Option 1: Use the original template script
 ```bash
 .venv\Scripts\activate  # activate your cozy coding space 🧘
 python monthly_chart_template.py  # go make that chart! 🎉
@@ -41,14 +72,48 @@ python monthly_chart_template.py  # go make that chart! 🎉
 
 Or you can double-click the `run_chart.bat` file if you're using Windows (it does all that for you 🤖).
 
+### Option 2: Use the clipboard tool (Recommended)
+```bash
+.venv\Scripts\activate  # activate your cozy coding space 🧘
+python clipboard_tool.py  # launch the friendly UI! 🪟
+```
+
+With the clipboard tool, you can:
+- Paste data from Excel/Google Sheets
+- Import data from CSV files
+- Add Type rows to properly classify your columns
+- Generate charts with less hassle
+
 ---
 
-## 💾 Where’s My Chart?
+## 📊 Data Format (Important!)
 
-After you run it, look in your folder! You’ll find:
+For best results, your data should include:
+1. A header row with column names (first column should be "Month")
+2. A "Type" row that identifies column types:
+   - "Income" for income columns
+   - "Expense" for expense columns
+   - "NET INCOME" for net income columns
+3. Your actual data rows with numbers
+
+Example:
+
+Month    Income    OPEX      PAYROLL   MATERIALS   NET INCOME
+Type     Income    Expense   Expense   Expense     NET INCOME
+Jan'24   1000      200       300       150         350
+Feb'24   1100      210       320       160         410
+```
+
+Don't worry if you don't include NET INCOME - it will be calculated automatically!
+
+---
+
+## 💾 Where's My Chart?
+
+After you run it, look in your folder! You'll find:
 
 ```
-📄 monthly_income_expense_chart.png ✅
+📄 output/[dataset_name].png ✅
 ```
 
 You can share it, print it, or send it to your biz team 📈💌
@@ -57,25 +122,210 @@ You can share it, print it, or send it to your biz team 📈💌
 
 ## 🧙 How to Change the Numbers
 
-Want to show a different month or new data?
-Open the `monthly_chart_template.py` file and look for these parts:
-
-- `months` → change the months
-- `income_vals` → update money-in for each month
-- `expense_data` → update each category's expenses
-- `net_income_vals` → update the red dotted line (net 💖)
+Two easy ways:
+1. Edit the spreadsheet where your data lives, then copy & paste into the clipboard tool
+2. Open the `monthly_chart_template.py` file and update the data arrays directly
 
 ---
 
 ## 🧠 Want to Go Further?
-This project is just getting started. We’ve got big dreams! ✨
+This project is just getting started. We've got big dreams! ✨
 
-Check out `DEVELOPMENT_STATE.md` to see future plans like:
-- Reading from Excel or Google Sheets 📄
-- Making it interactive like a dashboard 🖱️
-- Generating reports for clients 💼
+Check out `DEVELOPMENT_STATE.md` to see our progress and future plans:
+- ✅ Reading from CSV files (done!)
+- ✅ Accepting data via clipboard (done!)
+- ✅ Auto-calculating net income (done!)
+- 📄 Reading directly from Excel or Google Sheets
+- 🖱️ Making it interactive like a dashboard
+- 💼 Generating reports for clients
 
 Made with heart, color, and clarity 💗
 
 Keep coding with joy! 🧸✨
-======
+
+# 🛠️ Development Notes & Roadmap (Baba Style)
+
+Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ This doc keeps track of everything we've done, what's cooking, and where this little chart friend could grow next. Think of it as your cozy dev diary 📓💡
+
+---
+
+## ✅ What We Built
+- A Python program that turns income + expenses into a **stacked bar chart**
+- **Green bars** for income 💚, stacked colors for expense categories 🌈
+- A **red dotted line** for net income ❤️📉📈
+- Sweet little **labels for March 2025** categories for clarity 🏷️
+- Export to PNG with high quality
+- Clipboard tool UI for easy data pasting
+- Type row support to accurately identify Income, Expense, and Net Income columns
+- CSV file import option for structured data
+- Automatic net income calculation when not provided in the data
+- Daily cash balance visualization with multiple account lines
+- Upper (green) and lower (red) threshold lines with custom labels
+- Data editor for fixing date and value errors
+
+---
+
+## 🧱 Tools We Used
+- Python 3 🐍
+- Matplotlib (for the pretty pictures 🎨)
+- Tkinter (for the friendly UI 💻)
+- Virtual Environment (`.venv`) to keep things neat 🧼
+- A `requirements.txt` file to remember which tools we need
+- A `.bat` file for one-click magic on Windows 🧙‍♂️
+
+---
+
+## 📍 What's Working Great
+- Chart renders beautifully and opens in a window
+- Easy to edit data inside `monthly_chart_template.py`
+- Clipboard tool for quick data import from Excel/Google Sheets
+- Support for spreadsheet-like "Type" row to identify column purposes
+- Automatic calculation of Net Income if not provided
+- Saves the chart automatically
+- Virtual env setup and clean folder structure
+
+---
+
+## 🌿 Development Phases
+
+### Phase 0: Prototype
+- ✅ Basic script with hardcoded data
+- ✅ Generate static PNG image
+- ✅ Simple stacked bar chart with income and expenses
+
+### Phase 1: Data Layer (Current phase)
+- ✅ Create data loading module
+- ✅ Set up a simple data structure to store client information and financial data
+- ❌ Add basic file-based persistence so data doesn't need to be re-entered (Not fully implemented - save_data() not called)
+- ✅ Support for clipboard data import
+- ✅ CSV file import capability
+- ✅ Type row for identifying column purposes
+- ✅ Fix NET INCOME display as line graph, not stacked bar
+- ✅ Automatic NET INCOME calculation
+
+### Phase 1.5: Daily Cash Balance Chart (Complete) ✅
+- ✅ Create daily cash balance line chart module
+  - ✅ Set up DailyCashBalanceChart class extending BaseChart
+  - ✅ Implement multi-line visualization for multiple accounts
+  - ✅ Add total balance calculation and display
+  - ✅ Implement date axis formatting
+  - ✅ Add support for future projections with dotted lines
+  - ✅ Add threshold line functionality with customizable labels
+- ✅ Add data processing for daily cash balances
+  - ✅ Create CSV import function for daily cash data
+  - ✅ Implement date parsing and handling
+  - ✅ Set up account-based data transformation
+  - ✅ Support for negative balance values
+- ✅ Create enhanced UI for cash balance charts
+  - ✅ Build file upload interface and clipboard input
+  - ✅ Add chart configuration options with threshold controls
+  - ✅ Implement chart rendering and saving
+  - ✅ Add data editor for fixing dates and values
+
+Estimated time: 3-5 hours
+
+### Phase 1.6: Cash Flow Area Chart (Current Priority)
+- [ ] Create cash flow area chart module
+  - [ ] Set up CashFlowAreaChart class extending BaseChart
+  - [ ] Implement flowing area visualization for cash movements
+  - [ ] Support for multiple transactions in the same day
+  - [ ] Handle running balance calculations
+  - [ ] Add shaded areas for positive and negative flow regions
+- [ ] Add data processing for cash flow data
+  - [ ] Create data loader for transactions-based format
+  - [ ] Implement date grouping and sorting
+  - [ ] Support running balance verification
+  - [ ] Add transaction categorization
+- [ ] Create UI for cash flow area charts
+  - [ ] Build specialized upload interface
+  - [ ] Add filtering capabilities by category
+  - [ ] Implement zooming to specific date ranges
+  - [ ] Support transaction annotations
+
+Estimated time: 5-7 hours
+
+### Phase 2: UI Enhancements (Current Priority)
+- [ ] Improved UI layout and design
+- [ ] Direct Excel file import
+- [ ] Save/load configuration
+- [ ] Theme customization
+
+### Phase 3: Advanced Features
+- [ ] Interactive dashboard
+- [ ] Trend analysis
+- [ ] Multiple chart types
+- [ ] Comparison views
+- [ ] Data filtering options
+
+### Phase 4: Distribution & Production
+- [ ] Standalone executable
+- [ ] Client management system
+- [ ] Scheduled reports
+- [ ] Cloud sync option
+
+---
+
+## 🔮 What's Next (Future Dev Options)
+Here are some magical seeds we can plant later 🌱:
+
+- [x] 📄 **Read data from CSV files** ✅
+- [x] 🧮 Auto-calculate **net income from income - expenses** ✅
+- [x] 📋 **Accept data from clipboard** to make it easy to use ✅
+- [ ] 📄 **Read data directly from Excel or Google Sheets**
+- [ ] 🧑‍💼 **Add dropdowns or filters** using Streamlit
+- [ ] 📆 Add support for any month range (not just Sept–Mar)
+- [ ] 🌐 Build a web dashboard with interactivity (hover like QuickBooks)
+- [ ] 📊 Use Plotly for dynamic charting
+- [ ] 🧾 Export to PDF or full report package
+- [ ] ✨ Add animations or transitions for visual flair
+- [ ] 💰 **Create daily cash balance visualization** (Current priority)
+
+---
+
+## 🐞 Known Glitches
+- Some versions of Cursor might not auto-detect `.venv` until you select it manually (use `Python: Select Interpreter`)
+- If you add too many expense categories, labels on bars may overlap 🤹
+- ~~Net Income showing as an expense category in stacked bars instead of as a line~~ Fixed! ✅
+- Client data is not being saved to disk. The data structure works in memory but `save_data()` method is not being called after chart generation. This needs to be fixed for true data persistence.
+- There's an error when adding a lower threshold and clicking "Process & Generate Chart" in some scenarios - investigating this issue
+- Sometimes data with year-end transitions (Dec-Jan) may show anomalies in date formatting
+- JSON serialization can fail with certain pandas objects (added workaround with custom encoder)
+
+---
+
+## 🤗 Final Thought
+This isn't just code. It's a **practice in clarity, intention, and joy**. 
+Thanks for being part of this — future-you is gonna love you for keeping it tidy ✨💜
+
+## ⚠️ Known Issues
+
+- **Client Data Persistence**: Currently, client data is stored in memory but not automatically saved to disk. Data will be lost when the application is closed. This will be fixed in an upcoming update.
+
+## 📊 Chart Types
+
+The project currently supports two types of financial charts:
+
+1. **Monthly Income vs. Expense Chart** (Income/Expense Stacked Bar Chart)
+   - Green bars for income
+   - Stacked colored bars for expenses by category
+   - Red dotted line for net income
+   - Last month highlights with category labels
+
+2. **Daily Cash Balance Chart** (Multi-line Cash Flow Chart)
+   - Line graph showing balance for each account over time
+   - Bold line showing total balance across all accounts
+   - Customizable threshold lines (upper green, lower red)
+   - Support for negative balances (credit cards, loans)
+   - Date-based X-axis with proper formatting
+   - Built-in data editor for fixing mistakes
+
+## 📊 Upcoming Chart Types
+
+The next planned chart type is a **Cash Flow Area Chart**:
+
+- Visualizes cash flow as a flowing area chart
+- Supports multiple transactions on the same day
+- Works with running balance data structure
+- Includes positive/negative region visualization
+- Offers date range zooming and filtering
+- Provides transaction annotation capabilities
