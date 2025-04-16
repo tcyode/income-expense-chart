@@ -48,7 +48,7 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 - ✅ Generate static PNG image
 - ✅ Simple stacked bar chart with income and expenses
 
-### Phase 1: Data Layer (Current phase)
+### Phase 1: Data Layer
 - ✅ Create data loading module
 - ✅ Set up a simple data structure to store client information and financial data
 - ✅ Add basic file-based persistence so data doesn't need to be re-entered
@@ -58,7 +58,7 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
 - ✅ Fix NET INCOME display as line graph, not stacked bar
 - ✅ Automatic NET INCOME calculation
 
-### Phase 1.5: Daily Cash Balance Chart (Complete) ✅
+### Phase 1.5: Daily Cash Balance Chart (Needs Bug Fixes) ⚠️
 - ✅ Create daily cash balance line chart module
   - ✅ Set up DailyCashBalanceChart class extending BaseChart
   - ✅ Implement multi-line visualization for multiple accounts
@@ -76,8 +76,15 @@ Hey developer soul 👩‍💻👨‍💻 — welcome to the inside scoop! ✨ T
   - ✅ Add chart configuration options with threshold controls
   - ✅ Implement chart rendering and saving
   - ✅ Add data editor for fixing dates and values
+- 🔄 Bug Fixes & Refactoring (Current Focus)
+  - [ ] Fix date handling in `daily_cash_line.py` - calling `.max()` on string dates
+  - [ ] Improve data parsing for different input formats
+  - [ ] Create debug functionality for data format issues
+  - [ ] Implement consistent data structure using pandas DataFrames
+  - [ ] Fix loading existing datasets into the input panel
+  - [ ] Standardize error handling and user feedback
 
-### Phase 1.6: Cash Flow Area Chart (Current Priority)
+### Phase 1.6: Cash Flow Area Chart (After Bug Fixes)
 - [ ] Create cash flow area chart module
   - [ ] Set up CashFlowAreaChart class extending BaseChart
   - [ ] Implement flowing area visualization for cash movements
@@ -99,14 +106,24 @@ Estimated time: 5-7 hours
 
 ### Phase 2: UI Enhancements (Next)
 - ✅ Create a simple GUI interface with Tkinter
+- 🔄 Refactor codebase for improved modularity (Current Focus):
+  - [ ] Convert data handling to pandas DataFrames throughout codebase
+  - [ ] Split large files into focused components
+  - [ ] Create centralized data management system
+  - [ ] Implement consistent chart interface pattern
 - [ ] Improve the UI to allow:
+  - [ ] Client-based tab organization
   - [ ] Select data files with dialog
-  - [ ] Choose chart types (add more chart options)
+  - [ ] Choose chart types from dropdown within client tab
   - [ ] Select time periods with filters
   - [ ] Choose clients from a dropdown
+  - [ ] Detachable tabs for side-by-side comparison
+  - [ ] Comparison tab for multi-client/multi-chart view
 - [ ] Direct Excel file import
 - [ ] Save/load configuration
 - [ ] Theme customization
+
+Estimated time: 8-10 hours
 
 ### Phase 3: Advanced Features
 - [ ] Interactive dashboard
@@ -146,6 +163,29 @@ Here are some magical seeds we can plant later 🌱:
 - There's an error when adding a lower threshold and clicking "Process & Generate Chart" in some scenarios - investigating this issue
 - Sometimes data with year-end transitions (Dec-Jan) may show anomalies in date formatting
 - JSON serialization can fail with certain pandas objects (added workaround with custom encoder)
+- **Daily Cash Chart bug**: Error when trying to call `.max()` on a list of string dates in `daily_cash_line.py` - dates need to be converted to datetime objects
+- **Loading existing datasets**: Not properly loading dataset content into the input panel
+- **Data format inconsistencies**: Input parsing is not handling some formats correctly, needs more robust delimiter detection
+- **Data structure**: Current mix of lists, dictionaries, and sometimes pandas objects leads to inconsistencies and bugs
+
+## 📋 Data Structure Refactoring Plan
+We're planning to refactor our data handling to use pandas DataFrames consistently:
+
+1. **Consistent Data Types**:
+   - Store dates as proper datetime objects
+   - Maintain numeric types for amounts/balances
+   - Keep categorical data (account names, etc.) as typed categories
+
+2. **Central Data Management**:
+   - Use DataFrame as the primary data structure
+   - Convert to specialized formats only when needed for visualization
+   - Implement standardized validation and cleaning
+
+3. **Implementation Strategy**:
+   - Fix critical bugs first for minimum working functionality
+   - Refactor the data parsing layer to use pandas throughout
+   - Update chart generation to work with the new data structure
+   - Maintain backward compatibility for existing datasets
 
 ---
 

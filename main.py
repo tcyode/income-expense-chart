@@ -1,40 +1,40 @@
 # main.py
-# Main entry point for the financial chart generator
+# Entry point for the Financial Charts application
 
-from data_loader import FinancialDataManager, load_example_data
-from charts.stacked_bar import StackedBarIncomeChart
+import tkinter as tk
 import os
+import sys
+from ui.app import ChartApplication
 
 def ensure_directories():
-    """Make sure required directories exist."""
-    os.makedirs("client_data", exist_ok=True)
-    os.makedirs("output", exist_ok=True)
+    """Ensure necessary directories exist."""
+    directories = ["client_data", "output", "ui", "data", "data/parsers"]
+    for directory in directories:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Created directory: {directory}")
 
 def main():
-    """Main program entry point."""
+    """Start the Financial Charts application."""
+    # Make sure all necessary directories exist
     ensure_directories()
     
-    # Load data from the example
-    data_mgr = load_example_data()
+    # Check if running as executable or script
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        application_path = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        application_path = os.path.dirname(os.path.abspath(__file__))
     
-    # Get the dataset for creating a chart
-    dataset = data_mgr.get_dataset("2024_2025_monthly")
+    # Change working directory to application path
+    os.chdir(application_path)
     
-    # Add client name to the dataset
-    client_name = data_mgr.clients[data_mgr.current_client]['name']
-    dataset['client_name'] = client_name
+    # Create the main application
+    app = ChartApplication()
     
-    # Create and show the chart
-    chart = StackedBarIncomeChart()
-    chart.plot(dataset)
-    
-    # Save the chart to a file
-    chart.save_chart("output/monthly_income_expense_chart.png")
-    
-    # Display the chart
-    chart.show_chart()
-    
-    print("Chart generated successfully! Check the output directory.")
+    # Start the application
+    app.run()
 
 if __name__ == "__main__":
     main() 
